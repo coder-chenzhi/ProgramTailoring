@@ -1,0 +1,120 @@
+----------------
+| Requirements |
+----------------
+
+Tailor is expected to work on multiple platforms, e.g., Linux, Mac OS and Windows.
+To use Tailor, you need to get JDK 1.8 (or later) and Python 2.x installed
+on your system.
+
+-------------------------
+| Building instructions |
+-------------------------
+
+We have provided a pre-compiled executable jar of Tailor, i.e., tailor.jar
+in the directory "build". To build Tailor by yourself, you just need to
+switch to the unpack directory and run command:
+
+$ python compile.py
+
+---------
+| Usage |
+---------
+
+In this section, we will introduce the usage, sequential criteria (SC) specification,
+and analysis results of Tailor.
+
+ Running Tailor
+-------------------------------------------------
+We provide a python script, tailor.py, in the root of unpack directory to bootstrap Tailor.
+You can run command:
+
+$ python tailor.py -help
+
+to print the options for using Tailor:
+
+ -help                        Print this message
+
+ -sc-file <file>              The file containing the sequential criteria
+
+ -extend-sc <true or false>   Enable or disable SC extension (default value: true)
+
+ -out-dir <dir>               The directory containing analysis results
+                              (default value: output)
+
+ -cp <jar or dir>             The application jar file or the directory containing
+                              the classes of the application. Use path separator
+                              (":" on Linux/Unix/Mac OS or ";" on Windows) while
+                              specifying multiple items
+
+ -jre-lib <dir>               The directory containing the JRE to be used
+                              for whole-program analysis
+
+ -main-class <class>          Name of the main class of the application
+
+ -reflection-log <file>       The reflection log file for the application for
+                              resolving reflective call sites
+							  
+Here, "-extend-sc", "-out-dir" and "-reflection-log" are optional. The soundness
+of Tailor depends on the soundness of ICFG, and it is recommended to give a
+reflection log file while using Tailor to analyze the application containing
+reflective calls. Such log could be obtained by using reflection analysis tools
+such as ELF, SOLAR and TamiFlex.
+
+A typical usage of Tailor would be:
+
+$ python tailor.py -sc-file A.sc -cp A.jar -jre-lib ${JRE_LIB} -main-class A
+
+where A.sc is the file containing SC, A.jar is the jar file for the application,
+${JRE} is directory of JRE and A is the main class.
+
+
+ Sequential Criteria (SC) Specification
+-------------------------------------------------
+A SC consists of one or several statement sequences ending at the same program point.
+Tailor reads SC from the given file. In the file, one statement sequence should be
+specified in one line. A statement sequence consists of one or several statements,
+more specifically, API method calls in order. 
+
+Consider the following example program:
+
+1	public class A {
+2		public static void main(String[] args) {
+3			B b = new B();	
+4			b.foo();
+5			b.bar();
+6		}
+7	}
+
+Suppose we want to specify the sequence B.foo() -> B.bar() at lines 4 and 5
+as the SC, then the content of the SC file should be:
+
+A.main/B.foo/4;A.main/B.bar/5
+
+where multiple method calls are separated by ";". 
+
+In general, the format of one single API method call is:
+
+<callerClass>.<callerMethod>/<calleeClass>.<calleeMethod>/<lineNumber>
+
+where
+
+- <callerClass> is the full qualified name of the class containing the API call,
+- <callerMethod> is the name of the caller method,
+- <calleeClass> is the full qualified name of the class containing the callee method
+                (i.e., the declared class of variable b),
+- <calleeMethod> is the name of the callee method,
+- <lineNumber> is the number of the line of code containing the API call.
+
+
+ Analysis Results
+-------------------------------------------------
+Tailor outputs its analysis results, i.e., the statements in all possible execution
+paths passing through at least one sequence in SC in the given order, to a resulting file.
+The path and name of the file depend on the specified output directory and the given SC.
+
+For each statement in the tailored program, Tailor outputs the signature of its containing method, 
+its line number, and its corresponding Jimple units. In case when the line number does not exist,
+e.g., when the bytecode does not contain the line number information, the line number is shown as -1.
+
+
+Please feel free to contact the authors if you have any concerns.
